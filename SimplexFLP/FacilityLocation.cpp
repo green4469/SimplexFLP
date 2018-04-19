@@ -109,6 +109,118 @@ FacilityLocation::~FacilityLocation()
 /* LP-solver */
 double FacilityLocation::LP_solve()
 {
+	IloEnv env;
+
+	/* set and initialize connection variables */
+	/*
+	IloNumVar * x = new IloNumVar[n_facilities * n_clients];
+	//IloNumVar x[n_clients * n_facilities];
+	for (int i = 0; i < n_facilities; ++i) {
+	for (int j = 0; j < n_clients; ++j) {
+	x[i*n_clients + j] = IloNumVar(env, 0, IloInfinity);
+	}
+	}
+	*/
+	IloNumVarArray x(env, (IloInt)(n_facilities * n_clients), (IloNum)0, IloInfinity);
+
+
+	/* set and initialize opening variables */
+	/*
+	IloNumVar *y = new IloNumVar[n_facilities];
+	//IloNumVar y[n_facilities];
+	for (int i = 0; i < n_facilities; ++i)
+	y[i] = IloNumVar(env, 0, IloInfinity);
+	*/
+	IloNumVarArray y(env, (IloInt)n_facilities, (IloNum)0, IloInfinity);
+
+
+	/* set ranges of sums of connection variables (1 <= sum_i(x_ij) <= 1 for all j) */
+	/*
+	IloExpr * sum_expr = new IloExpr[n_clients];
+	IloRange * sum_condition = new IloRange[n_clients];
+	//IloExpr sum_expr[n_clients];
+	//IloRange sum_condition[n_clients];
+	for (int j = 0; j < n_clients; ++j) {
+	sum_expr[j] = IloExpr(env);
+	for (int i = 0; i < n_facilities; ++i) {
+	sum_expr[j] += x[i*n_clients + j];
+	}
+	sum_condition[j] = (sum_expr[j] == 1.0);
+	}
+	*/
+	IloExprArray sum_expr(env);
+	IloRangeArray sum_condition(env);
+	for (int j = 0; j < n_clients; ++j) {
+		sum_expr.add(IloExpr(env));
+		for (int i = 0; i < n_facilities; ++i) {
+			sum_expr[j] += x[i*n_clients + j];
+		}
+		sum_condition.add(sum_expr[j] == 1.0);
+	}
+
+
+
+	/* set ranges of connection variables and opening variables (-inf <= x_ij - y_i <= 0 for all i, j) */
+	/*
+	IloRange * x_range = new IloRange[n_clients * n_facilities];
+	//IloRange x_range[n_clients * n_facilities];
+	for (int i = 0; i < n_facilities; ++i) {
+	for (int j = 0; j < n_clients; ++j) {
+	x_range[i * n_clients + j] = IloRange(env, -IloInfinity, 0);
+	x_range[i * n_clients + j].setLinearCoef(x[i*n_clients + j], 1);
+	x_range[i * n_clients + j].setLinearCoef(y[i], -1);
+	}
+	}
+	*/
+	IloRangeArray x_range(env);
+	for (int i = 0; i < n_facilities; ++i) {
+		for (int j = 0; j < n_clients; ++j) {
+			x_range.add(IloRange(env, -IloInfinity, 0));
+			x_range[i * n_clients + j].setLinearCoef(x[i*n_clients + j], 1);
+			x_range[i * n_clients + j].setLinearCoef(y[i], -1);
+		}
+	}
+
+	/* set the obj fct (minimize sum_i(y_i*f_i) + sum_{i,j}(x_ij*d(i,j)) )*/
+	IloObjective obj = IloMinimize(env, 0);
+	for (int i = 0; i < n_facilities; ++i) {
+		obj.setLinearCoef(y[i], this->opening_cost[i]);
+		for (int j = 0; j < n_clients; ++j) {
+			obj.setLinearCoef(x[i*n_clients + j], this->connection_cost[i][j]);
+		}
+	}
+
+	/* compile the model */
+	/*
+	IloModel model(env);
+	for (int j = 0; j < n_clients; ++j) {
+	//model.add(sum_range[j]);
+	model.add(sum_condition[j]);
+	for (int i = 0; i < n_facilities; ++i) {
+	model.add(x_range[i*n_clients + j]);
+	}
+	}
+	*/
+	IloModel model(env);
+	model.add(sum_condition);
+	model.add(x_range);
+	model.add(obj);
+
+	/* solve the model */
+	IloCplex solver(model);
+	try {
+		solver.solve();
+	}
+	catch (IloException &ex) {
+		cerr << ex << endl;
+	}
+	/* save results*/
+	for (int i = 0; i < n_facilities; ++i) {
+		for (int j = 0; j < n_clients; ++j) {
+			this->clients_coordinate[j][i] = solver.getValue(x[i*n_clients + j]);
+		}
+	}
+	return solver.getObjValue();
 
 }
 
