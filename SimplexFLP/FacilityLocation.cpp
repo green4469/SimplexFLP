@@ -24,56 +24,108 @@ int CompareDoubleUlps(double x, double y, int ulpsTolerance = 4)
 }
 
 /* Constructor definition */
-FacilityLocation::FacilityLocation(int argc, char *argv[])
+FacilityLocation::FacilityLocation(int argc, char *argv[], int dim)
 {
-	ifstream in(argv[1]);
-	in >> n_facilities;
-	in >> n_clients;
+	if (argc == 1) {
+		n_facilities = dim;
+		n_clients = dim;
 
-	/* Memory allocation of opening_cost(f), connection_cost(d) */
-	opening_cost = new double[n_facilities];
-	for (int i = 0; i < n_facilities; i++) {
-		in >> opening_cost[i];
-	}
-
-	connection_cost = new double*[n_facilities];
-	for (int i = 0; i < n_facilities; i++) {
-		connection_cost[i] = new double[n_clients];
-		for (int j = 0; j < n_clients; j++) {
-			connection_cost[i][j] = DBL_MAX;
-		}
-	}
-
-	int f, c;
-	while (in) {
-		in >> f >> c;
-		in >> connection_cost[f][c];
-	}
-
-	in.close();
-
-	/* Make the input graph satisfy triangular inequality constraint */
-	triangular_inequality();
-
-	/* Memory allocation of clients_coordinate(j) */
-	clients_coordinate = new double*[n_clients];
-	for (int j = 0; j < n_clients; j++) {
-		clients_coordinate[j] = new double[n_facilities];
+		/* memory allocation of opening_cost(f), connection_cost(d) */
+		opening_cost = new double[n_facilities]; // dynamic allocation
 		for (int i = 0; i < n_facilities; i++) {
-			clients_coordinate[j][i] = 0.0;
+			opening_cost[i] = (double)rand() / RAND_MAX * (100 - 1) + 1;
+		}
+
+		connection_cost = new double*[n_facilities]; // dynamic allocation
+		for (int i = 0; i < n_facilities; i++) {
+			connection_cost[i] = new double[n_clients]; // dynamic allocation
+		}
+
+		for (int i = 0, j = 0; i < n_facilities;) {
+			// connection_cost[i][j] = (double)rand() % 100 + 1;
+			connection_cost[i][j] = (double)rand() / RAND_MAX * (100 - 1) + 1;
+			j++;
+			if (j == n_clients) {
+				i++;
+				j = 0;
+			}
+		}
+
+		triangular_inequality();
+
+		/* Memory allocation of clients_coordinate(j) */
+		clients_coordinate = new double*[n_clients];
+		for (int j = 0; j < n_clients; j++) {
+			clients_coordinate[j] = new double[n_facilities];
+			for (int i = 0; i < n_facilities; i++) {
+				clients_coordinate[j][i] = 0.0;
+			}
+		}
+		/* Memory allocation of the expoential clocks of the facilities */
+
+		exponential_clocks = new double[n_facilities]; // dynamic allocation
+
+		/* Memory allocation of opening_table, connection_table (Output of rounding alg) */
+		opening_table = new bool[n_facilities];
+		connection_table = new bool*[n_facilities];
+		for (int i = 0; i < n_facilities; i++) {
+			connection_table[i] = new bool[n_clients];
+			for (int j = 0; j < n_clients; j++) {
+				connection_table[i][j] = false;
+			}
 		}
 	}
 
-	/* Memory allocation of the exponential clocks of the facilities(Z) */
-	exponential_clocks = new double[n_facilities];
+	if (argc == 2) {
+		ifstream in(argv[1]);
+		in >> n_facilities;
+		in >> n_clients;
 
-	/* Memory allocation of opening_table, connection_table (Output of rounding alg) */
-	opening_table = new bool[n_facilities];
-	connection_table = new bool*[n_facilities];
-	for (int i = 0; i < n_facilities; i++) {
-		connection_table[i] = new bool[n_clients];
+		/* Memory allocation of opening_cost(f), connection_cost(d) */
+		opening_cost = new double[n_facilities];
+		for (int i = 0; i < n_facilities; i++) {
+			in >> opening_cost[i];
+		}
+
+		connection_cost = new double*[n_facilities];
+		for (int i = 0; i < n_facilities; i++) {
+			connection_cost[i] = new double[n_clients];
+			for (int j = 0; j < n_clients; j++) {
+				connection_cost[i][j] = DBL_MAX;
+			}
+		}
+
+		int f, c;
+		while (in) {
+			in >> f >> c;
+			in >> connection_cost[f][c];
+		}
+
+		in.close();
+
+		/* Make the input graph satisfy triangular inequality constraint */
+		triangular_inequality();
+
+		/* Memory allocation of clients_coordinate(j) */
+		clients_coordinate = new double*[n_clients];
 		for (int j = 0; j < n_clients; j++) {
-			connection_table[i][j] = false;
+			clients_coordinate[j] = new double[n_facilities];
+			for (int i = 0; i < n_facilities; i++) {
+				clients_coordinate[j][i] = 0.0;
+			}
+		}
+
+		/* Memory allocation of the exponential clocks of the facilities(Z) */
+		exponential_clocks = new double[n_facilities];
+
+		/* Memory allocation of opening_table, connection_table (Output of rounding alg) */
+		opening_table = new bool[n_facilities];
+		connection_table = new bool*[n_facilities];
+		for (int i = 0; i < n_facilities; i++) {
+			connection_table[i] = new bool[n_clients];
+			for (int j = 0; j < n_clients; j++) {
+				connection_table[i][j] = false;
+			}
 		}
 	}
 

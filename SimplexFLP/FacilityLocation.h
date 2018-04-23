@@ -17,8 +17,8 @@ using namespace std;
 class FacilityLocation {
 public:
 	/* The number of facilities and clients */
-	int n_facilities;
-	int n_clients;
+	int n_facilities = 0;
+	int n_clients = 0;
 
 	/* Rounded solution's objective cost */
 	double rounded_cost = 0.0;
@@ -41,7 +41,7 @@ public:
 	bool **connection_table = NULL;			// n_facilities x n_clients
 
 	/* Constructor */
-	FacilityLocation(int argc, char *argv[]);
+	FacilityLocation(int argc, char *argv[], int dim=0);
 
 	/* Deconstructor */
 	~FacilityLocation();
